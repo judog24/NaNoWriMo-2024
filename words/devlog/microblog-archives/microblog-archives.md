@@ -92,3 +92,61 @@ $postDate = Get-Date -date (Import-PostDate -dateString $test) -Format "yyyy-MM-
 
 This will now display `2022-11-06T03:18:14Z` as the output.
 I will probably need to fiddle around the dates again to sort the posts into relevant folders but for now I can begin the fun part of having PowerShell read my post archive.
+
+## Reading Archives
+
+PowerShell can easily read JSON files.
+The post archive stores the data in a JavaScript file instead of a JSON file.
+Thankfully, it is only the first line of the file that messes with things.
+
+```javascript
+window.YTD.tweets.part0 = [
+  {
+    "tweet" : {
+      "edit_info" : {
+        "initial" : {
+            ...
+```
+
+Deleting everything on the first line before the opening bracket will render perfectly valid JSON.
+This is also an easy task.
+
+```PowerShell
+function Import-Posts {
+    param (
+        $archive
+    )
+
+    $javascript = Get-Content -Path "$archive" -Raw
+    $json = $javascript.TrimStart("window.YTD.tweets.part0 = ")
+
+    $json | ConvertFrom-Json
+}
+
+$posts = Import-Posts -archive ".\tweets.js"
+$posts.length
+```
+
+Now I can manipulate the data.
+`$posts.length` in this instance returns `16148` which is the amount of posts that this archive contains.
+
+## Formatting Posts
+
+```YAML
+---
+title: ""
+date:
+author: ""
+tags: []
+event: ""
+---
+```
+
+The YAML above is my first draft of how I want my Markdown front matter to look.
+Title, date and author will automatically be populated from the archive.
+Tags will be populated when hashtags are available, but additional work will need to be done to properly organize posts.
+As long as I have a method somewhere for searching the text of my posts, I am not immediately concerned with having every post tagged.
+The event field will remain blank by default.
+It is a field that I want to curate by hand.
+As stated earlier, the body of the Markdown post will be the text of the original post but some modifications will need to be made to make the posts Markdown compliant.
+For the sake of respecting the privacy of other users, I will not be publishing replies, mentions or reposts.
